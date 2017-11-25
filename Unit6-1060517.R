@@ -285,6 +285,7 @@ stopCluster(cl)
 
 ### Using dplyr
 library(dplyr)
+library(tibble)
 # Say, our data is simple an R data frame. "mtcars" again?
 # Convert data frame into "tibble". "mtcars" has become a "tbl"
 mtcars_tb = as_tibble(mtcars); class(mtcars_tb)
@@ -310,16 +311,17 @@ bind_cols(mtcars_tb, tibble(rowNum = 1:nrow(mtcars)))
 
 library(RSQLite) # If our dataset is in an SQLite database
 # Create a temporary in-memory SQLite database with a table for "movies"
-con = dbConnect(RSQLite::SQLite(), dbname = ":memory:")
+#con = dbConnect(RSQLite::SQLite(), dbname = ":memory:")
 # Or, create a SQLite embedded database file in hard drive
-# con = dbConnect(RSQLite::SQLite(), dbname = "./myDB.Sqlite")
+con = dbConnect(RSQLite::SQLite(), dbname = "./myDB.Sqlite")
 dbWriteTable(con, "movies", ggplot2movies::movies ) 
 dbListTables(con) # list tables in the database
 # Get result of a query as a data frame (a SQL pass-through query)
 movies_df = dbGetQuery(con, "select * from movies") 
 
 # Say we'd like to directly manipulate tables in the database
-sqliteDB = dbplyr::src_dbi(con, auto_disconnect = F)
+#sqliteDB = dbplyr::src_dbi(con, auto_disconnect = F)
+sqliteDB=dplyr::src_sqlite("./myDB.Sqlite")
 # movies & movies_8 are simply pointers to the tables in the database!
 movies_tb = tbl(sqliteDB, "movies")
 movies_tb_8 = movies_tb %>% filter(rating > 8) %>% select(title, year, rating)
@@ -329,6 +331,7 @@ class(movies_tb_8)
 # The size of them are relatively smaller than original data frame
 pryr::object_size(ggplot2movies::movies)
 pryr::object_size(movies_tb)
+pryr::object_size(movies_tb_8)
 # We can surely check out the query plan
 dplyr::explain(movies_tb_8)
 
@@ -373,9 +376,9 @@ movies_tb_local %>% select(title, length, rating) %>%
 movies_tb %>% select(title, length) %>% filter(grepl("star trek", title, ignore.case = T))
 
 # Split by "longShort" (Grouped by: longShort)
-movies_longShort = movies_tb %>% group_by(longShort = ifelse(length > 130, "long", "short")) 
+movies_longShort = movies_tb_local %>% group_by(longShort = ifelse(length > 130, "long", "short")) 
 # Apply n() and Combine. Type ?summarise for more aggregation functions
-movies_longShort = movies_longShort %>% summarize(ct = n())
+movies_longShort= movies_longShort %>% summarize(ct = n())
 
 # Movies rating counter
 movies_rating_ct = movies_tb %>% select(rating) %>% group_by(round_rating = round(rating, 0)) %>% 
